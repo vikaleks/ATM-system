@@ -13,13 +13,10 @@ public class AtmService
     
     public void Register(string accountNumber, string pin, string fullName)
     {
-        // Проверяем, есть ли уже такой аккаунт
         if (_accountRepository.GetAccountByNumber(accountNumber) != null)
         {
             throw new Exception("Пользователь с таким номером счета уже существует.");
         }
-
-        // Создаем новый аккаунт
         var user = new Account()
         {
             AccountNumber = accountNumber,
