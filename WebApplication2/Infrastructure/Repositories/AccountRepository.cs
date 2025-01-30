@@ -7,7 +7,7 @@ namespace WebApplication2.Infrastructure.Repositories;
 
 public class AccountRepository : IAccountRepository
 {
-    private const string ConnectionString = "Data Source=atm.db";
+    private const string ConnectionString = "...";
 
     public void CreateAccount(Account account)
     {
