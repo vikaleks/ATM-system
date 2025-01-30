@@ -1,0 +1,147 @@
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Банкомат</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="w-full max-w-md bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold text-center mb-4">Банкомат</h1>
+    
+        <!-- Регистрация -->
+        <div id="registerForm" class="space-y-3">
+            <h2 class="text-lg font-semibold">Регистрация</h2>
+            <input type="text" id="regAccountNumber" class="w-full p-2 border rounded" placeholder="Номер счета">
+            <input type="password" id="regPin" class="w-full p-2 border rounded" placeholder="Пин-код">
+            <input type="text" id="fullName" class="w-full p-2 border rounded" placeholder="ФИО">
+            <button onclick="register()" class="w-full bg-blue-500 text-white p-2 rounded">Зарегистрироваться</button>
+        </div>
+    
+        <!-- Вход -->
+        <div id="loginForm" class="space-y-3 mt-4">
+            <h2 class="text-lg font-semibold">Вход в систему</h2>
+            <input type="text" id="accountNumber" class="w-full p-2 border rounded" placeholder="Номер счета">
+            <input type="password" id="pin" class="w-full p-2 border rounded" placeholder="Пин-код">
+            <button onclick="login()" class="w-full bg-green-500 text-white p-2 rounded">Войти</button>
+        </div>
+    
+        <!-- Действия -->
+        <div id="actions" class="mt-4 hidden space-y-3">
+            <h2 class="text-lg font-semibold">Действия</h2>
+            <button onclick="viewBalance()" class="w-full bg-gray-300 p-2 rounded">Просмотр баланса</button>
+            <button onclick="deposit()" class="w-full bg-yellow-500 text-white p-2 rounded">Пополнить счет</button>
+            <button onclick="withdraw()" class="w-full bg-red-500 text-white p-2 rounded">Снять деньги</button>
+            <button onclick="toggleHistory()" class="w-full bg-indigo-500 text-white p-2 rounded">История операций</button>
+            <button onclick="logout()" class="w-full bg-gray-500 text-white p-2 rounded">Выйти</button>
+        </div>
+    
+        <div id="result" class="mt-4 text-center text-red-500"></div>
+        <div id="history" class="mt-4 hidden">
+            <h2 class="text-lg font-semibold">История операций</h2>
+            <table class="w-full border-collapse border border-gray-300">
+                <thead>
+                <tr class="bg-gray-200">
+                    <th class="border p-2">Тип</th>
+                    <th class="border p-2">Сумма</th>
+                    <th class="border p-2">Дата</th>
+                </tr>
+                </thead>
+                <tbody id="historyTable"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        let account = null;
+        
+        function showResult(message) {
+            document.getElementById('result').textContent = message;
+        }
+        async function register() {
+            const accountNumber = document.getElementById('regAccountNumber').value;
+            const pin = document.getElementById('regPin').value;
+            const fullName = document.getElementById('fullName').value;
+    
+            const response = await fetch('/api/atm/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountNumber, pin, fullName })
+            });
+            response.ok ? showResult('Регистрация успешна') : showResult('Ошибка: ' + await response.text());
+        }
+    
+        async function login() {
+            const accountNumber = document.getElementById('accountNumber').value;
+            const pin = document.getElementById('pin').value;
+    
+            const response = await fetch('/api/atm/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountNumber, pin })
+            });
+    
+            if (response.ok) {
+                account = await response.json();
+                document.getElementById('actions').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginForm').classList.add('hidden');
+                showResult('Вход выполнен');
+            } else {
+                showResult('Ошибка: ' + await response.text());
+            }
+        }
+    
+        function logout() {
+            account = null;
+            document.getElementById('actions').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('history').classList.add('hidden');
+            showResult('Вы вышли');
+        }
+    
+        async function viewBalance() {
+            const response = await fetch(`/api/atm/balance?accountNumber=${account.accountNumber}&pin=${account.pin}`);
+            if (response.ok) {
+                const data = await response.json();
+                account.balance = data.balance;
+                showResult(`Ваш баланс: ${account.balance}`);
+            }else {
+                showResult('Ошибка: ' + await response.text());
+            }
+        }
+    
+        async function deposit() { await processTransaction('/api/atm/deposit', 'Счет пополнен'); await viewBalance(); }
+        async function withdraw() { await processTransaction('/api/atm/withdraw', 'Деньги сняты'); await viewBalance(); }
+    
+        async function processTransaction(url, successMessage) {
+            const amount = prompt('Введите сумму:');
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountNumber: account.accountNumber, pin: account.pin, amount })
+            });
+            response.ok ? showResult(successMessage) : showResult('Ошибка: ' + await response.text());
+        }
+    
+        async function toggleHistory() {
+            const historyElement = document.getElementById('history');
+            if (!historyElement.classList.contains('hidden')) {
+                historyElement.classList.add('hidden');
+                return;
+            }
+            const response = await fetch(`/api/atm/history?accountNumber=${account.accountNumber}&pin=${account.pin}`);
+            if (response.ok) {
+                const transactions = await response.json();
+                const historyTable = document.getElementById('historyTable');
+                historyTable.innerHTML = transactions.map(tx => `<tr><td class='border p-2'>${tx.type}</td><td class='border p-2'>${tx.amount}</td><td class='border p-2'>${new Date(tx.timestamp).toLocaleString()}</td></tr>`).join('');
+                historyElement.classList.remove('hidden');
+            } else {
+                showResult('Ошибка: ' + await response.text());
+            }
+        }
+    </script>
+    </body>
+    </html>
