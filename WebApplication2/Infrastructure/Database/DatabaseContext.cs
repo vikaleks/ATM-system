@@ -13,7 +13,7 @@ public class DatabaseContext : DbContext
     {
     }
     
-    private const string ConnectionString = "Data Source=atm.db";
+    private const string ConnectionString = "...";
 
     public void InitializeDatabase()
     {
